@@ -211,10 +211,10 @@ void get_message_from_socket (const live_server_info &server, std::string &msg)
 {
   if (server.client_fd == -1)
   { return;}
-  char buffer[BUFFER_SIZE] = {};
-  while (read (server.client_fd, buffer, BUFFER_SIZE) > 0){
+  char buffer[SHARED_MEMORY_SIZE] = {};
+  while (read (server.client_fd, buffer, SHARED_MEMORY_SIZE) > 0){
     msg += buffer;
-    std::fill(buffer, buffer+ BUFFER_SIZE, '\0');
+    std::fill(buffer, buffer+ SHARED_MEMORY_SIZE, '\0');
   }
 }
 void get_message_from_shm (const live_server_info &server, std::string &msg)
