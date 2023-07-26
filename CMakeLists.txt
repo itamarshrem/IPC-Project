@@ -10,5 +10,6 @@ add_executable(ex5
         server.h
         server.cpp
         client.cpp
-        server_main.cpp
-        client_main.cpp)
+#        server_main.cpp
+#        client_main.cpp
+        )

@@ -1,0 +1,4 @@
+ip123
+port34
+shmpathnameitamar
+56789
