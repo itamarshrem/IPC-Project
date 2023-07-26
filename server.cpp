@@ -31,6 +31,7 @@ void init_addr (sockaddr_in *server_addr, const server_setup_information
   hp = gethostbyname (myname);
   if (hp == nullptr)
   { error_handling ("gethostbyname", "init_addr"); }
+  char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr))
   memset (server_addr, 0, sizeof (struct sockaddr_in));
   server_addr->sin_family = hp->h_addrtype;
   memcpy (&server_addr->sin_addr, hp->h_addr, hp->h_length);

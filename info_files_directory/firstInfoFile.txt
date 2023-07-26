@@ -1,4 +1,4 @@
 ip123
-port34
+8080
 shmpathnameitamar
 56789
