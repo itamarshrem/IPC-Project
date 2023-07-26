@@ -1,4 +1,0 @@
-ip123
-8080
-shmpathnameitamar
-56789

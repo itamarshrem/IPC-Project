@@ -31,9 +31,12 @@ void init_addr (sockaddr_in *server_addr, const server_setup_information
   hp = gethostbyname (myname);
   if (hp == nullptr)
   { error_handling ("gethostbyname", "init_addr"); }
-  char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr))
+//  char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr));
+//  if (ip == nullptr){
+//      error_handling("couldn't get ip", "init_addr");
+//  }
   memset (server_addr, 0, sizeof (struct sockaddr_in));
-  server_addr->sin_family = hp->h_addrtype;
+  server_addr->sin_family = AF_INET;
   memcpy (&server_addr->sin_addr, hp->h_addr, hp->h_length);
   server_addr->sin_port = htons (setup_info.port);
 }
@@ -44,7 +47,7 @@ start_communication (const server_setup_information &setup_info, live_server_inf
   // creating a socket:
   int shmid, socketfd;
   struct sockaddr_in server_addr;
-  struct hostent *hp;
+  struct hostent *hp = {};
   key_t key;
   init_addr (&server_addr, setup_info, hp);
   if ((socketfd = socket (AF_INET, SOCK_STREAM, 0)) < 0)
@@ -76,21 +79,29 @@ void
 create_info_file (const server_setup_information &setup_info, live_server_info &server)
 {
   std::ofstream info_file;
-  struct sockaddr *addr;
-  socklen_t addrlen;
-  std::string path = setup_info.info_file_directory + setup_info
+//  struct sockaddr *addr;
+//  socklen_t addrlen;
+  std::string path = setup_info.info_file_directory +"/" +setup_info
       .info_file_name;
-  info_file.open (path, std::ios::out); // todo is path is okay? or should
-  // todo be something else?
+  info_file.open (path, std::ios::out);
   if (!info_file)
   { error_handling ("open a file", "create_info_file"); }
-  // todo is the following line okay??
-  if (getpeername (server.server_fd, addr, &addrlen) < 0)
-  { error_handling ("getpeername", "create_info_file"); }
-  // todo if addr is not in the form of "x.y.z.w", need to deal with that.
 
+//  if (getpeername (server.server_fd, addr, &addrlen) < 0)
+//  { error_handling ("getpeername", "create_info_file"); } // todo maybe need that!!
+
+  hostent *hp;
+  char myname[MAXHOSTNAME + 1];
+  gethostname (myname, MAXHOSTNAME);
+  hp = gethostbyname (myname);
+  if (hp == nullptr)
+    { error_handling ("gethostbyname", "init_addr"); }
+  char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr));
+  if (ip == nullptr){
+      error_handling("couldn't get ip", "init_addr");
+  }
   // writing to info file:
-  info_file << addr->sa_data << "\n" << setup_info.port << "\n" <<
+  info_file << ip << "\n" << setup_info.port << "\n" <<
             setup_info.shm_pathname << "\n" << setup_info.shm_proj_id << "\n";
   server.info_file_path = path;
   info_file.close ();
@@ -101,23 +112,18 @@ void get_connection (live_server_info &server)
   struct timeval timeout;
   timeout.tv_sec = SERVER_TIMEOUT;
   timeout.tv_usec = 0;
-  fd_set clientsfds;
   fd_set readfds;
-  FD_ZERO(&clientsfds);
-  FD_SET(server.server_fd, &clientsfds); // todo do i need this line?
-  FD_SET(STDIN_FILENO, &clientsfds);
-//  FD_SET(server.server_fd, &readfds); // todo do i need this line? i think not!
-
-  if (select (MAX_CLIENTS + 1, nullptr, nullptr, nullptr, &timeout) < 0)
+  FD_SET(server.server_fd, &readfds);
+  int res = select (server.server_fd + 1, &readfds, nullptr, nullptr, &timeout);
+  if (res < 0)
   {
     error_handling ("select", "get_connection");
   }
-  if (FD_ISSET(server.server_fd, &readfds))
-  {
-    if ((client_fd = accept(server.server_fd, NULL, NULL)) < 0)
-    { error_handling ("couldn't accept the call", "get_connection");}
-    server.client_fd = client_fd;
-    return;
+  else if(res > 0){
+      if ((client_fd = accept(server.server_fd, NULL, NULL)) < 0)
+      { error_handling ("couldn't accept the call", "get_connection");}
+      server.client_fd = client_fd;
+      return;
   }
   server.client_fd = -1; // if no connection were established in 120 seconds
 }

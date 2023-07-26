@@ -20,7 +20,6 @@
 #include <algorithm>
 
 #define CLIENT_TIMEOUT 5
-#define MAX_SERVERS 23
 #define BUFFER_SIZE 1024
 
 void error_handling_2 (const std::string &msg, const std::string &scope)
@@ -45,11 +44,12 @@ server)
   if ((hp = gethostbyname (hostname)) == NULL)
   { error_handling_2 (" couldn't get host address", "connect_by_socket"); }
   memset (&sa, 0, sizeof (sa));
-  memcpy ((char *) &sa.sin_addr, hp->h_addr, hp->h_length);
-  sa.sin_family = hp->h_addrtype;
+//  memcpy ((char *) &sa.sin_addr, hp->h_addr, hp->h_length);
+    inet_pton(AF_INET, ip.c_str(), &(sa.sin_addr));
+  sa.sin_family = AF_INET;
   sa.sin_port = htons ((u_short) port);
   //connect to a socket:
-  if ((s = socket (hp->h_addrtype,
+  if ((s = socket (AF_INET,
                    SOCK_STREAM, 0)) < 0)
   {
     error_handling_2 ("couldn't create socket for client",
@@ -58,25 +58,23 @@ server)
   struct timeval timeout;
   timeout.tv_sec = CLIENT_TIMEOUT;
   timeout.tv_usec = 0;
-  fd_set clientsfds;
-  fd_set readfds;
   fd_set writefds;
-  FD_ZERO(&writefds);
   FD_SET(s, &writefds);
-  if (select (MAX_SERVERS + 1, nullptr, &writefds, nullptr, &timeout) < 0)
+  int res = select (s + 1, nullptr, &writefds, nullptr, &timeout);
+  if (res < 0)
   {
     error_handling_2 ("couldn't use select function", "connect_by_socket");
   }
-  if (FD_ISSET(s, &writefds))
-  {
-    if (connect (s, (struct sockaddr *) &sa, sizeof (sa)) < 0)
-    {
-      close (s);
-      error_handling_2 ("couldn't connect to server", "connect_by_socket");
-    }
-    //todo is s contain now the socket to the server?
-    server.client_fd = s;
-    return;
+  if (res > 0){
+      if (connect (s, (struct sockaddr *) &sa, sizeof (sa)) < 0)
+      {
+//          std::cout << strerror(errno) << "\n";
+          close (s);
+          error_handling_2 ("couldn't connect to server", "connect_by_socket"); // todo maybe i don't need to exit? maybe i can also do server.client_fd = -1?
+      }
+      //todo is s contain now the socket to the server?
+      server.client_fd = s;
+      return;
   }
   server.client_fd = -1;
 }
@@ -119,7 +117,7 @@ shm_pathname, int *shm_proj_id)
   info_file.close ();
 }
 
-int
+void
 connect_server (const std::string &info_file_path, live_server_info &server)
 {
   std::string ip, shm_pathname_str;
@@ -145,7 +143,7 @@ count_servers (const std::string &client_files_directory, std::vector<live_serve
     std::string fullPath = client_files_directory + "/" + entry->d_name;
     struct stat fileStat;
     if (stat (fullPath.c_str (), &fileStat) < 0)
-    { error_handling_2 ("Failed to get file stats", "count_servers"); }
+    { continue; }
     if (S_ISDIR(fileStat.st_mode))// Skip directories
     { continue; }
     server.info_file_path = fullPath;
