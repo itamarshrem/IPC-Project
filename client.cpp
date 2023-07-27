@@ -30,7 +30,6 @@ void error_handling_2 (const std::string &msg, const std::string &scope)
 
 char *get_real_ip (const std::string &ip)
 {
-  // todo maybe the current ip is not in a good format, so here i'll change it
   return (char *) ip.c_str ();
 }
 
@@ -75,9 +74,8 @@ server)
       server.client_fd = -1;
       return;
 //          std::cout << strerror(errno) << "\n";
-//      error_handling_2 ("couldn't connect to server", "connect_by_socket"); // todo maybe i don't need to exit? maybe i can also do server.client_fd = -1?
+//      error_handling_2 ("couldn't connect to server", "connect_by_socket"); //
   }
-  //todo is s contain now the socket to the server?
   server.client_fd = s;
 }
 
@@ -89,15 +87,12 @@ server)
   int shmid;
   if ((key = ftok (shm_pathname, shm_proj_id)) < 0)
   {
-    //todo do i need to exit the program maybe?
 //    error_handling_2 ("couldn't get key in ftok", "connect_by_shm");
     server.shmid = -1;
     return;
   }
   if ((shmid = shmget (key, SHARED_MEMORY_SIZE, 0666)) < 0)
   {
-    //todo do i need to exit the program maybe?
-    // error_handling_2 ("couldn't get shmid in shmget", "connect_by_shm");
     server.shmid = -1;
     return;
   }

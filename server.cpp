@@ -90,7 +90,7 @@ create_info_file (const server_setup_information &setup_info, live_server_info &
   { error_handling(server, "open a file", "create_info_file"); }
 
 //  if (getpeername (server.server_fd, addr, &addrlen) < 0)
-//  { print_error ("getpeername", "create_info_file"); } // todo maybe need that!!
+//  { print_error ("getpeername", "create_info_file"); }
 
   hostent *hp;
   char myname[MAXHOSTNAME + 1];
@@ -133,7 +133,6 @@ void write_to_socket (const live_server_info &server, const std::string &msg)
 {
   size_t messageLength = msg.size();
   const char* messageToSend = msg.c_str();
-  // todo should i write to server.server_fd or to server.client_fd
   if(write(server.client_fd, messageToSend, messageLength) == -1)
   { error_handling(server, "write", "write_to_socket");}
 }
