@@ -15,14 +15,18 @@
 #include <sys/time.h>
 
 
-#define MAX_CLIENTS 1
 #define SERVER_TIMEOUT 120
 
-void error_handling (const std::string &msg, const std::string &scope)
+void print_error (const std::string &msg, const std::string &scope)
 {
   std::cerr << "system error: " << msg << " in function: " << scope << "\n";
   exit (1);
 }
+void error_handling(const live_server_info &server, const std::string &msg, const std::string &scope){
+    shutdown(server);
+    print_error(msg, scope);
+}
+
 void init_addr (sockaddr_in *server_addr, const server_setup_information
 &setup_info, hostent *hp)
 {
@@ -30,10 +34,10 @@ void init_addr (sockaddr_in *server_addr, const server_setup_information
   gethostname (myname, MAXHOSTNAME);
   hp = gethostbyname (myname);
   if (hp == nullptr)
-  { error_handling ("gethostbyname", "init_addr"); }
+  { print_error("gethostbyname", "init_addr"); }
 //  char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr));
 //  if (ip == nullptr){
-//      error_handling("couldn't get ip", "init_addr");
+//      print_error("couldn't get ip", "init_addr");
 //  }
   memset (server_addr, 0, sizeof (struct sockaddr_in));
   server_addr->sin_family = AF_INET;
@@ -52,24 +56,24 @@ start_communication (const server_setup_information &setup_info, live_server_inf
   init_addr (&server_addr, setup_info, hp);
   if ((socketfd = socket (AF_INET, SOCK_STREAM, 0)) < 0)
   {
-    error_handling ("socket", "start_communication");
+      print_error("socket", "start_communication");
   }
   if (bind (socketfd, (struct sockaddr *) &server_addr, sizeof (struct sockaddr_in))
       < 0)
   {
     close (socketfd);
-    error_handling ("bind", "start_communication");
+      print_error("bind", "start_communication");
   }
   listen (socketfd, 3); // can be any other number greater than 1!
   const char* c_s_pathname = setup_info.shm_pathname.c_str();
   //creating shared memory segment:
   if ((key = ftok (c_s_pathname, setup_info.shm_proj_id)) < 0)
   {
-    error_handling ("ftok", "start_communication");
+      print_error("ftok", "start_communication");
   }
   if ((shmid = shmget (key, SHARED_MEMORY_SIZE, 0666 | IPC_CREAT)) < 0)
   {
-    error_handling ("shmget", "start_communication");
+      print_error("shmget", "start_communication");
   }
   server.shmid = shmid;
   server.server_fd = socketfd;
@@ -79,26 +83,24 @@ void
 create_info_file (const server_setup_information &setup_info, live_server_info &server)
 {
   std::ofstream info_file;
-//  struct sockaddr *addr;
-//  socklen_t addrlen;
   std::string path = setup_info.info_file_directory +"/" +setup_info
       .info_file_name;
   info_file.open (path, std::ios::out);
   if (!info_file)
-  { error_handling ("open a file", "create_info_file"); }
+  { error_handling(server, "open a file", "create_info_file"); }
 
 //  if (getpeername (server.server_fd, addr, &addrlen) < 0)
-//  { error_handling ("getpeername", "create_info_file"); } // todo maybe need that!!
+//  { print_error ("getpeername", "create_info_file"); } // todo maybe need that!!
 
   hostent *hp;
   char myname[MAXHOSTNAME + 1];
   gethostname (myname, MAXHOSTNAME);
   hp = gethostbyname (myname);
   if (hp == nullptr)
-    { error_handling ("gethostbyname", "init_addr"); }
+    { error_handling(server, "gethostbyname", "init_addr"); }
   char* ip = inet_ntoa(*((struct in_addr*) hp->h_addr));
   if (ip == nullptr){
-      error_handling("couldn't get ip", "init_addr");
+      error_handling(server, "couldn't get ip", "init_addr");
   }
   // writing to info file:
   info_file << ip << "\n" << setup_info.port << "\n" <<
@@ -117,11 +119,11 @@ void get_connection (live_server_info &server)
   int res = select (server.server_fd + 1, &readfds, nullptr, nullptr, &timeout);
   if (res < 0)
   {
-    error_handling ("select", "get_connection");
+      error_handling(server, "select", "get_connection");
   }
   else if(res > 0){
       if ((client_fd = accept(server.server_fd, NULL, NULL)) < 0)
-      { error_handling ("couldn't accept the call", "get_connection");}
+      { error_handling(server, "couldn't accept the call", "get_connection");}
       server.client_fd = client_fd;
       return;
   }
@@ -133,7 +135,7 @@ void write_to_socket (const live_server_info &server, const std::string &msg)
   const char* messageToSend = msg.c_str();
   // todo should i write to server.server_fd or to server.client_fd
   if(write(server.client_fd, messageToSend, messageLength) == -1)
-  { error_handling ("write", "write_to_socket");}
+  { error_handling(server, "write", "write_to_socket");}
 }
 void write_to_shm (const live_server_info &server, const std::string &msg)
 {
@@ -150,7 +152,7 @@ void shutdown (const live_server_info &server)
   close (server.client_fd);
   const char * info_file_path = server.info_file_path.c_str();
   if (remove(info_file_path) != 0)
-  { error_handling ("couldn't remove the info file", "shutdown");}
+  { print_error("couldn't remove the info file", "shutdown");}
 }
 void
 run (const server_setup_information &setup_info, const std::string &shm_msg, const std::string &socket_msg)

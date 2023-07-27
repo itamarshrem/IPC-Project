@@ -65,18 +65,20 @@ server)
   {
     error_handling_2 ("couldn't use select function", "connect_by_socket");
   }
-  if (res > 0){
-      if (connect (s, (struct sockaddr *) &sa, sizeof (sa)) < 0)
-      {
-//          std::cout << strerror(errno) << "\n";
-          close (s);
-          error_handling_2 ("couldn't connect to server", "connect_by_socket"); // todo maybe i don't need to exit? maybe i can also do server.client_fd = -1?
-      }
-      //todo is s contain now the socket to the server?
-      server.client_fd = s;
+  if (res == 0)
+  {
+      server.client_fd = -1;
       return;
   }
-  server.client_fd = -1;
+  if (connect (s, (struct sockaddr *) &sa, sizeof (sa)) < 0)
+  {
+      server.client_fd = -1;
+      return;
+//          std::cout << strerror(errno) << "\n";
+//      error_handling_2 ("couldn't connect to server", "connect_by_socket"); // todo maybe i don't need to exit? maybe i can also do server.client_fd = -1?
+  }
+  //todo is s contain now the socket to the server?
+  server.client_fd = s;
 }
 
 void
@@ -228,7 +230,7 @@ void get_message_from_shm (const live_server_info &server, std::string &msg)
 void disconnect (const std::vector<live_server_info> &servers)
 {
   for (const auto& server: servers){
-    if((close(server.client_fd)) != 0)
+    if(server.client_fd != -1 && (close(server.client_fd)) != 0)
     { error_handling_2 ("failed to close socket", "disconnect");}
   }
 }
